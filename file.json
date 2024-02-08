@@ -1,0 +1,99 @@
+{
+  "modinfo": {
+    "name": "Fun Custom Thingy!",
+    "id": "omegametor.funct",
+    "developer": "OmegaMetor",
+    "source": "github.com/OmegaMetor/FunCustomThing",
+    "resource_locations": {
+      "code": "resources/code/",
+      "textures": "resources/textures/",
+      "sounds": "sounds",
+      "rooms": "resources/rooms/"
+    }
+  },
+  "additions": {
+    "rooms": [
+      {
+        "": "I'm not sure how defining a room format would work yet tbh"
+      }
+    ],
+    "scripts": [
+      {
+        "overwrite": true,
+        "name": "do_thing",
+        "code": "file.gml"
+      }
+    ],
+    "objects": [
+      {
+        "name": "wall-3",
+        "texture": "wall.png",
+        "scripts": {
+          "create": "file.gml",
+          "step-0": "file.gml",
+          "destroy": "file.gml"
+        },
+        "custom": [
+          {
+            "name": "editor-addition",
+            "required": false,
+            "options": {
+              "add-to-editor": true,
+              "object-properties": {
+                "xscale": "32",
+                "placescript": "place-thing"
+              },
+              "object-settings": [
+                {
+                  "name": "Do thing",
+                  "type": "string-number",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "mixins": [
+    {
+      "inject": {
+        "script": "script_name_here",
+        "at": "start"
+      },
+      "code": "file.gml"
+    },
+    {
+      "inject": {
+        "script": "script_name_here",
+        "at": "return",
+        "index": -1
+      },
+      "code": "file.gml"
+    },
+    {
+      "inject": {
+        "script": "script_name_here",
+        "at": "call_function",
+        "when": "after",
+        "function": "debug_message_show",
+        "index": 3
+      },
+      "code": "file.gml"
+    },
+    {
+      "inject": {
+        "script": "script_name_here",
+        "at": "variable",
+        "action": "get",
+        "when": "before",
+        "variable": "voiceline"
+      },
+      "code": "file.gml"
+    }
+  ]
+}
