@@ -3,11 +3,11 @@
 #include <iostream>
 
 
-using namespace System;
-using namespace testingFunny;
-
+//using namespace System;
+using namespace GMMK;
 
 void LoadMods(){
-    cli::array<unsigned char,1>^ thing = funnylol::doFunny();
-    Console::WriteLine(thing[2]);
+    System::Console::WriteLine("Mod Loader Called");
+    cli::array<unsigned char,1>^ thing = ModLoader::loadMods();
+    std::cout << thing[2] << std::endl;
 }
