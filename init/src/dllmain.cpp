@@ -3,12 +3,12 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
-#include <unordered_set>
+#include <unordered_map>
 #include <minhook.h>
 
 bool has_errored = false;
 
-std::unordered_set<HANDLE> data_win_handles;
+std::unordered_map<HANDLE, std::filesystem::path> data_win_handles;
 
 typedef HANDLE (WINAPI* CreateFileWFunc)(
     LPCWSTR lpFileName,
@@ -40,7 +40,7 @@ HANDLE WINAPI hook_CreateFileW(
     if(path.filename().wstring() == L"data.win")
     {
         std::cout << "Captured data.win handle: " << fileHandle << std::endl;
-        data_win_handles.insert(fileHandle);
+        data_win_handles.insert({fileHandle, path});
 
     }
 
@@ -65,7 +65,7 @@ BOOL WINAPI hook_ReadFile(
     LPOVERLAPPED lpOverlapped)
 {
     if(data_win_handles.contains(hFile))
-        std::cout << "Hooked ReadFile: " << nNumberOfBytesToRead << " bytes from data.win handle " << hFile << std::endl;
+        std::cout << "Hooked ReadFile: " << nNumberOfBytesToRead << " bytes from data.win handle " << hFile << " file path " << data_win_handles.at(hFile) << std::endl;
 
     // TODO: If reading the data.win, instead redirect to wherever the modified data.win is.
     // Maybe, disable hook, call c# function (in other c++/cli dll, to avoid having to do the dotnet runtime stuff or mono)
