@@ -7,8 +7,7 @@
 #include <minhook.h>
 
 bool has_errored = false;
-
-std::unordered_map<HANDLE, std::filesystem::path> data_win_handles;
+LPCWSTR patched_data_path = NULL;
 
 typedef HANDLE (WINAPI* CreateFileWFunc)(
     LPCWSTR lpFileName,
@@ -29,73 +28,26 @@ HANDLE WINAPI hook_CreateFileW(
     LPSECURITY_ATTRIBUTES lpSecurityAttributes,
     DWORD dwCreationDisposition,
     DWORD dwFlagsAndAttributes,
-    HANDLE hTemplateFile, bool hi )
+    HANDLE hTemplateFile)
 {
-    HANDLE fileHandle = original_CreateFileW(
-        lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
-        dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-
     std::filesystem::path path(lpFileName);
 
     if(path.filename().wstring() == L"data.win")
     {
-        std::cout << "Captured data.win handle: " << fileHandle << std::endl;
-        data_win_handles.insert({fileHandle, path});
-
+        if(!patched_data_path)
+        {
+            std::cout << "data.win not yet loaded, calling patcher." << std::endl;
+            patched_data_path = L"testdata.win";
+        }
+        std::wcout << "Opening data.win from " << patched_data_path << std::endl;
+        lpFileName = patched_data_path;
     }
 
+    HANDLE fileHandle = original_CreateFileW(
+        lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
+        dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
     return fileHandle;
-}
 
-typedef BOOL (WINAPI* ReadFileFunc)(
-    HANDLE hFile,
-    LPVOID lpBuffer,
-    DWORD nNumberOfBytesToRead,
-    LPDWORD lpNumberOfBytesRead,
-    LPOVERLAPPED lpOverlapped
-);
-
-ReadFileFunc original_ReadFile = NULL;
-
-BOOL WINAPI hook_ReadFile(
-    HANDLE hFile,
-    LPVOID lpBuffer,
-    DWORD nNumberOfBytesToRead,
-    LPDWORD lpNumberOfBytesRead,
-    LPOVERLAPPED lpOverlapped)
-{
-    if(data_win_handles.contains(hFile))
-        std::cout << "Hooked ReadFile: " << nNumberOfBytesToRead << " bytes from data.win handle " << hFile << " file path " << data_win_handles.at(hFile) << std::endl;
-
-    // TODO: If reading the data.win, instead redirect to wherever the modified data.win is.
-    // Maybe, disable hook, call c# function (in other c++/cli dll, to avoid having to do the dotnet runtime stuff or mono)
-    // c# function returns a path (as a string), CreateFileW that handle (also disable createfilew hook?)
-    // Then, here, instead of reading from the requested handle, read from our data.win handle.
-
-    // Alternatively, have the c# function return a byte array,
-    // and instead of reading from a separate handle,
-    // simply reimplement ReadFile from an array of bytes.
-    // Probably not very simple though.
-
-    return original_ReadFile(
-        hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
-}
-
-typedef BOOL (*CloseHandleFunc)(
-    HANDLE handle
-);
-
-CloseHandleFunc original_CloseHandle = NULL;
-
-BOOL hook_CloseHandle(HANDLE handle)
-{
-    if(data_win_handles.contains(handle))
-    {
-        std::cout << "Removing data.win handle " << handle << std::endl;
-        data_win_handles.erase(handle);
-
-    }
-    return original_CloseHandle(handle);
 }
 
 bool setup_hooks()
@@ -114,30 +66,6 @@ bool setup_hooks()
 
     if(MH_EnableHook(&CreateFileW) != MH_OK) {
         std::cout << "Failed to enable CreateFileW hook!" << std::endl;
-        return false;
-    }
-
-    std::wcout << "Creating ReadFile hook" << std::endl;
-    
-    if(MH_CreateHook(&ReadFile, &hook_ReadFile, reinterpret_cast<LPVOID*>(&original_ReadFile)) != MH_OK){
-        std::cout << "Failed to create ReadFile hook!" << std::endl;
-        return false;
-    }
-
-    if(MH_EnableHook(&ReadFile) != MH_OK) {
-        std::cout << "Failed to enable ReadFile hook!" << std::endl;
-        return false;
-    }
-
-    std::cout << "Creating CloseHandle hook" << std::endl;
-
-    if(MH_CreateHook(&CloseHandle, &hook_CloseHandle, reinterpret_cast<LPVOID*>(&original_CloseHandle)) != MH_OK){
-        std::cout << "Failed to create CloseHandle hook!" << std::endl;
-        return false;
-    }
-
-    if(MH_EnableHook(&CloseHandle) != MH_OK) {
-        std::cout << "Failed to enable CloseHandle hook!" << std::endl;
         return false;
     }
 
