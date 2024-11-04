@@ -5,9 +5,12 @@
 #include <filesystem>
 #include <unordered_map>
 #include <minhook.h>
+#include <shellapi.h>
 
 bool has_errored = false;
 LPCWSTR patched_data_path = NULL;
+
+__declspec(dllimport) LPCWSTR patch(LPCWSTR data_win_path);
 
 typedef HANDLE (WINAPI* CreateFileWFunc)(
     LPCWSTR lpFileName,
@@ -37,7 +40,8 @@ HANDLE WINAPI hook_CreateFileW(
         if(!patched_data_path)
         {
             std::cout << "data.win not yet loaded, calling patcher." << std::endl;
-            patched_data_path = L"testdata.win";
+    
+            patched_data_path = patch(lpFileName); // TODO: Replace with c++/cli library call. `LPWSTR patch(LPWSTR data_win_path)`.
         }
         std::wcout << "Opening data.win from " << patched_data_path << std::endl;
         lpFileName = patched_data_path;
@@ -78,12 +82,29 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     if (ul_reason_for_call != DLL_PROCESS_ATTACH)
         return TRUE;
 
+    // TODO: Check config for console enable
     AllocConsole();
     freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
 
-    bool has_errored = false;
+    bool should_modify = true;
 
-    if(!setup_hooks()) has_errored = true;
+    int num_args = 0;
+    LPWSTR* args = CommandLineToArgvW(GetCommandLineW(), &num_args);
+
+    for (int i = 0; i < num_args; i++)
+    {
+        if(lstrcmpW(args[i], L"-game") == 0)
+        {
+            should_modify = false;
+        }
+    }
+
+    bool has_errored = false;
+    std::cout << should_modify << std::endl;
+    if (should_modify)
+    {
+        if(!setup_hooks()) has_errored = true;
+    }
 
     return TRUE;
 }
