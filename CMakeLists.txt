@@ -2,20 +2,32 @@ cmake_minimum_required (VERSION 3.21)
 
 project("gmmk")
 
+add_library(gmmk-init SHARED "src/dllmain.cpp" "src/proxydll.cpp")
+
+set_target_properties(gmmk-init PROPERTIES
+    OUTPUT_NAME "dbgcore"
+    CXX_STANDARD 20
+)
+
 set(Output_Bin_Dir "${CMAKE_SOURCE_DIR}/out/")
 
-add_subdirectory(init)
-add_subdirectory(patcher)
+include(FetchContent)
 
-target_link_libraries(gmmk-init PRIVATE gmmk-patcher)
+FetchContent_Declare(
+    minhook
+    GIT_REPOSITORY "https://github.com/TsudaKageyu/minhook.git"
+    GIT_TAG "master"
+    EXCLUDE_FROM_ALL
+)
+
+FetchContent_MakeAvailable( minhook )
+
+target_link_libraries (gmmk-init PRIVATE minhook)
 
 add_custom_target(post_build ALL
     COMMAND ${CMAKE_COMMAND} -E make_directory ${Output_Bin_Dir}
     COMMAND ${CMAKE_COMMAND} -E make_directory "${Output_Bin_Dir}/mods/"
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:gmmk-init> "${Output_Bin_Dir}"
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:gmmk-patcher> "${Output_Bin_Dir}"
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE_DIR:gmmk-patcher>/ijwhost.dll "${Output_Bin_Dir}"
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE_DIR:gmmk-patcher>/gmmk-patcher.runtimeconfig.json "${Output_Bin_Dir}"
 )
 
 install(
